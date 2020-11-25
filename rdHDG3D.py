@@ -42,7 +42,7 @@ def SolveProblem(order=order, refines=refines,
         mesh = MakeStructured3DMesh(hexes=False, nx=8*2**i, ny = 8*2**i, 
                 nz = 8*2**i)
         t1 = timeit.time()
-        #print("Elasped:%.2e MESHING "%(t1-t0))
+        print("\nElasped:%.2e MESHING "%(t1-t0))
         
         # HDG spaces 
         V = L2(mesh, order=order)
@@ -94,7 +94,11 @@ def SolveProblem(order=order, refines=refines,
         ######## THIS IS MOST TIME CONSUMING PART
         fBlocks = facePatchBlocks(mesh, fes)
         t0 = timeit.time()
-        #print("Elasped:%.2e BLOCKING "%(t0-t1))
+        # number of DOFS
+        ntotal = fes.ndof
+        nglobal = sum(fes.FreeDofs(True))
+        print("Elasped:%.2e BLOCKING  Total DOFs: %.2e Global DOFs: %.2e "%(
+            t0-t1, ntotal, nglobal))
         
         class SymmetricGS(BaseMatrix):
               def __init__ (self, smoother):
@@ -119,14 +123,17 @@ def SolveProblem(order=order, refines=refines,
         mixmass = BilinearForm(trialspace=V0, testspace=fes)
         mixmass += u0 * vhat * dx(element_boundary=True)
         
-        massf = BilinearForm(fes)
-        massf += uhat * vhat * dx(element_boundary=True)
+        uhat1, vhat1 = M.TnT()
+        massf = BilinearForm(M, symmetric=True)
+        massf += uhat1 * vhat1 * dx(element_boundary=True)
+
+        embM = Embedding(fes.ndof, fes.Range(1))
         
         with TaskManager():
             f.Assemble()
             a.Assemble()
             t1 = timeit.time()
-            #print("Elasped:%.2e ASSEMBLE "%(t1-t0))
+            print("Elasped:%.2e ASSEMBLE "%(t1-t0))
             ######### smoother (use edge blocks)
             # smoother
             jac = a.mat.CreateSmoother(fes.FreeDofs(True))
@@ -141,7 +148,8 @@ def SolveProblem(order=order, refines=refines,
             massf.Assemble()
             mixmass.Assemble()
             # massf is diagonal
-            m_inv = massf.mat.CreateSmoother(fes.FreeDofs(True)) 
+            m_inv0 = massf.mat.CreateSmoother(M.FreeDofs(True)) 
+            m_inv = embM @ m_inv0 @ embM.T
 
             E = m_inv @ mixmass.mat
             ET = mixmass.mat.T @ m_inv
@@ -152,7 +160,7 @@ def SolveProblem(order=order, refines=refines,
             # block gs smoother
             pre2 = SymmetricGS(bjac) + pre_twogrid
             t2 = timeit.time()
-            #print("Elasped:%.2e PREC "%(t2-t1))
+            print("Elasped:%.2e PREC "%(t2-t1))
 
             inv1 = CGSolver(a.mat, pre1, maxsteps=10000, 
                 precision=1e-10, printrates=False)
@@ -166,11 +174,11 @@ def SolveProblem(order=order, refines=refines,
             gfu.vec.data += a.harmonic_extension * gfu.vec
             gfu.vec.data += a.inner_solve * f.vec
             t3 = timeit.time()
-            #print("Elasped:%.2e SOLVE "%(t3-t2))
+            print("Elasped:%.2e SOLVE "%(t3-t2))
             print("tau0:%.0e tau1 %.0e   JAC:%i  BGS: %i"%(tau0, tau1,  inv1.GetSteps(), inv2.GetSteps()))
             
-            ndof = fes.ndof
-            ndof_g = M.ndof
-            #print('\n', ndof, ndof-ndof_g, ndof_g)
+            print("*****************************************************")
+            print("*****************************************************")
+            print("*****************************************************")
 
 SolveProblem(order, refines)

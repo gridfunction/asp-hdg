@@ -37,7 +37,7 @@ def SolveProblem(order=order, refines=refines):
         t0 = timeit.time()
         mesh = MakeStructured2DMesh(quads=False, nx=8*2**i, ny = 8*2**i)
         t1 = timeit.time()
-        #print("Elasped:%.2e MESHING "%(t1-t0))
+        print("\nElasped:%.2e MESHING "%(t1-t0))
         
         # Div-HDG spaces
         V = HDiv(mesh, order=order, dirichlet=".*")
@@ -46,6 +46,7 @@ def SolveProblem(order=order, refines=refines):
         fes = FESpace([V,M])
         # aux H1 space
         V0 = VectorH1(mesh, order=1, dirichlet=".*")
+        
         
         gfu = GridFunction (fes)
         (u,uhat),  (v,vhat) = fes.TnT()
@@ -93,7 +94,11 @@ def SolveProblem(order=order, refines=refines):
         
         eBlocks = edgePatchBlocks(mesh, fes)
         t0 = timeit.time()
-        #print("Elasped:%.2e BLOCKING "%(t0-t1))
+        # number of DOFS
+        ntotal = fes.ndof 
+        nglobal = sum(fes.FreeDofs(True))
+        print("Elasped:%.2e BLOCKING  Total DOFs: %.2e Global DOFs: %.2e "%(
+            t0-t1, ntotal, nglobal))
         
         class SymmetricGS(BaseMatrix):
               def __init__ (self, smoother):
@@ -130,7 +135,7 @@ def SolveProblem(order=order, refines=refines):
             f.Assemble()
             a.Assemble()
             t1 = timeit.time()
-            #print("Elasped:%.2e ASSEMBLE "%(t1-t0))
+            print("Elasped:%.2e ASSEMBLE "%(t1-t0))
             ######### smoother (use edge blocks)
             jac = a.mat.CreateSmoother(fes.FreeDofs(True))
             bjac = a.mat.CreateBlockSmoother(eBlocks)
@@ -156,7 +161,7 @@ def SolveProblem(order=order, refines=refines):
             # block gs smoother
             pre2 = SymmetricGS(bjac) + pre_twogrid
             t2 = timeit.time()
-            #print("Elasped:%.2e PREC "%(t2-t1))
+            print("Elasped:%.2e PREC "%(t2-t1))
             
             
             inv1 = CGSolver(a.mat, pre1, maxsteps=10000, 
@@ -172,12 +177,12 @@ def SolveProblem(order=order, refines=refines):
             gfu.vec.data += a.harmonic_extension * gfu.vec
             gfu.vec.data += a.inner_solve * f.vec
             t3 = timeit.time()
-            #print("Elasped:%.2e SOLVE \n  tau0:%f tau1 %f   JAC:%i  BGS: %i"%(t3-t2, 
-            # tau0, tau1,  inv1.GetSteps(), inv2.GetSteps()))
-            print("tau0:%.0e tau1 %.0e   JAC:%i  BGS: %i"%(tau0, tau1,  inv1.GetSteps(), inv2.GetSteps()))
+            print("Elasped:%.2e SOLVE "%(t3-t2)) 
+            print("tau0:%.0e tau1 %.0e  JAC:%i  BGS: %i"%(tau0, tau1,  
+                inv1.GetSteps(), inv2.GetSteps()))
             
-            ndof = fes.ndof
-            ndof_g = M.ndof
-            #print('\n', ndof, ndof-ndof_g, ndof_g)
+            print("*****************************************************")
+            print("*****************************************************")
+            print("*****************************************************")
 
 SolveProblem(order, refines)

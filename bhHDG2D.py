@@ -44,7 +44,6 @@ def SolveProblem(order=order, refines=refines):
         t0 = timeit.time()
         mesh = MakeStructured2DMesh(quads=False, nx=8*2**i, ny = 8*2**i)
         t1 = timeit.time()
-        #print("Elasped:%.2e MESHING "%(t1-t0))
         
         # C0-HDG FESpaces
         VT = H1(mesh, order=order+1, dirichlet=".*")
