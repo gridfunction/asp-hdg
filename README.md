@@ -1,5 +1,5 @@
 # asp-hdg
-auxiliary space preconditioning for HDG schemes
+auxiliary space preconditioning for HDG schemes https://arxiv.org/pdf/2011.11828.pdf
 
 Requirement: 
 NGSOLVE: https://ngsolve.org/
